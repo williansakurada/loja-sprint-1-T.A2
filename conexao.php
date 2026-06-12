@@ -2,7 +2,7 @@
 $host = "192.168.56.101";
 $usuario = "root";
 $senha = "";
-$banco = "loja virtual";
+$banco = "loja_virtual";
 
 $conn = mysqli_connect($host, $usuario, $senha, $banco);
 
