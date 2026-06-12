@@ -1,126 +1,135 @@
 <?php
-$tituloPagina = "Loja Virtual";
+$tituloPagina = "Gungnir Store";
+include 'conexao.php';
 include 'templates/header.php';
-?>
 
-<h2 class="mb-4">Nossos Produtos</h2>
-
-<div class="mb-4">
-    <input type="text" id="busca" class="form-control" placeholder="Buscar produto...">
-</div>
-<div class="mb-4">
-    <button class="btn btn-outline-primary me-2" onclick="filtrarPreco(100)">Preço > R$ 100</button>
-    <button class="btn btn-outline-secondary" onclick="mostrarTodos()">Mostrar Todos</button>
-</div>
-
-<div class="row" id="lista-produtos"></div>
-<div id="mensagem" class="alert alert-danger mt-3 d-none"></div>
-
-<script>
-const produtos = [
-    { nome: "Camiseta", preco: 49.90, estoque: 10 },
-    { nome: "Calça Jeans", preco: 120.00, estoque: 5 },
-    { nome: "Tênis", preco: 199.90, estoque: 8 },
-    { nome: "Boné", preco: 35.00, estoque: 0 },
-    { nome: "Jaqueta", preco: 250.00, estoque: 3 },
+$produtos_extra = [
+    ["nome" => "Camiseta Racing", "slug" => "camiseta-racing", "preco" => 159.90, "preco_orig" => 199.90, "estoque" => 8, "img" => "imgs/camiseta1.png"],
+    ["nome" => "Camiseta 90", "slug" => "camiseta-90", "preco" => 139.90, "preco_orig" => 179.90, "estoque" => 7, "img" => "imgs/camiseta2.png"],
+    ["nome" => "Calça Reta", "slug" => "calca-reta", "preco" => 109.90, "preco_orig" => 139.90, "estoque" => 8, "img" => "imgs/calca2.png"],
+    ["nome" => "Jaqueta de Moletom", "slug" => "jaqueta-de-moletom", "preco" => 129.90, "preco_orig" => null, "estoque" => 6, "img" => "imgs/blusa3.png"],
+    ["nome" => "Calça Cargo", "slug" => "calca-cargo", "preco" => 120.00, "preco_orig" => null, "estoque" => 5, "img" => "imgs/calca1.png"],
+    ["nome" => "Calça Baggy Cargo", "slug" => "calca-baggy-cargo", "preco" => 109.90, "preco_orig" => null, "estoque" => 3, "img" => "imgs/calca3.png"],
+    ["nome" => "Camiseta de Gato", "slug" => "camiseta-de-gato", "preco" => 49.90, "preco_orig" => null, "estoque" => 0, "img" => "imgs/camisetadogato.png"],
+    ["nome" => "Jaqueta Puffer", "slug" => "jaqueta-puffer", "preco" => 119.90, "preco_orig" => null, "estoque" => 0, "img" => "imgs/blusa1.png"],
+    ["nome" => "Jaqueta Y2k", "slug" => "jaqueta-y2k", "preco" => 119.90, "preco_orig" => null, "estoque" => 0, "img" => "imgs/blusa2.png"],
 ];
 
-function calcularDesconto(preco, percentual) {
-    return preco - (preco * percentual / 100);
+$sale = []; $normal = []; $soldout = [];
+foreach ($produtos_extra as $p) {
+    if ($p['estoque'] == 0) $soldout[] = $p;
+    elseif ($p['preco_orig'] !== null) $sale[] = $p;
+    else $normal[] = $p;
 }
+$produtos_ordenados = array_merge($sale, $normal, $soldout);
+?>
 
-function calcularFrete(preco) {
-    if (preco >= 150) {
-        return 0;
-    } else {
-        return 15.00;
-    }
+<div class="row g-3 p-3" id="grid-produtos">
+<?php foreach ($produtos_ordenados as $p):
+    $sold_out = $p['estoque'] == 0;
+    $is_sale = $p['preco_orig'] !== null;
+?>
+    <div class="col-4">
+        <div class="produto-card <?= $sold_out ? 'sold-out' : '' ?>" onclick="<?= !$sold_out ? 'window.location=\'produto.php?id='.$p['slug'].'\'' : '' ?>">
+            <div class="produto-img">
+                <?php if ($sold_out): ?>
+                    <span class="tag-soldout">SOLD OUT</span>
+                <?php endif; ?>
+                <?php if ($is_sale): ?>
+                    <span class="tag-sale">SALE</span>
+                <?php endif; ?>
+                <?php if (!empty($p['img'])): ?>
+                    <img src="<?= $p['img'] ?>" alt="<?= $p['nome'] ?>">
+                <?php else: ?>
+                    <div class="img-placeholder"></div>
+                <?php endif; ?>
+            </div>
+            <div class="produto-info">
+                <p class="produto-nome"><?= $p['nome'] ?></p>
+                <p class="produto-preco">
+                    R$ <?= number_format($p['preco'], 2, ',', '.') ?>
+                    <?php if ($is_sale): ?>
+                        <span class="preco-orig">R$ <?= number_format($p['preco_orig'], 2, ',', '.') ?></span>
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
+    </div>
+<?php endforeach; ?>
+</div>
+
+<style>
+.produto-card {
+    position: relative;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    background: transparent;
 }
-
-function gerarCardProduto(produto) {
-    const precoComDesconto = calcularDesconto(produto.preco, 10);
-    const frete = calcularFrete(produto.preco);
-    const badge = produto.estoque > 0
-        ? '<span class="badge bg-success">Em estoque</span>'
-        : '<span class="badge bg-danger">Sem estoque</span>';
-    const freteTexto = frete === 0
-        ? '<p class="text-success small">Frete gratis!</p>'
-        : '<p class="text-muted small">Frete: R$ ' + frete.toFixed(2) + '</p>';
-
-    return '<div class="col-md-3 mb-4">'
-        + '<div class="card shadow">'
-        + '<div class="card-body">'
-        + '<h5 class="card-title">' + produto.nome + '</h5>'
-        + '<p class="text-success fw-bold">R$ ' + produto.preco.toFixed(2) + '</p>'
-        + '<p class="text-muted small">Com 10% desc: R$ ' + precoComDesconto.toFixed(2) + '</p>'
-        + freteTexto
-        + badge
-        + '</div></div></div>';
+.produto-card:hover { opacity: 0.85; }
+.produto-img { position: relative; }
+.produto-img img {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: contain;
+    display: block;
+    background-color: #fff;
 }
-
-function filtrarPreco(minimo) {
-    if (produtos.length === 0) {
-        mostrarMensagem("Nenhum produto cadastrado!");
-        return;
-    }
-    if (minimo < 0) {
-        mostrarMensagem("Valor invalido para filtro!");
-        return;
-    }
-    var filtrados = produtos.filter(function(p) { return p.preco > minimo; });
-    if (filtrados.length === 0) {
-        mostrarMensagem("Nenhum produto com preco acima de R$ " + minimo);
-    } else {
-        esconderMensagem();
-        renderizarProdutos(filtrados);
-    }
+.img-placeholder {
+    width: 100%;
+    height: 350px;
+    background-color: #e0e0e0;
 }
-
-function buscarProduto(termo) {
-    if (termo.trim() === "") {
-        mostrarTodos();
-        return;
-    }
-    var resultado = produtos.filter(function(p) {
-        return p.nome.toLowerCase().indexOf(termo.toLowerCase()) !== -1;
-    });
-    if (resultado.length === 0) {
-        mostrarMensagem("Nenhum produto encontrado!");
-    } else {
-        esconderMensagem();
-        renderizarProdutos(resultado);
-    }
+.sold-out .produto-img img,
+.sold-out .img-placeholder { opacity: 0.4; }
+.produto-info {
+    padding: 10px 12px 14px;
+    background: transparent;
 }
-
-function mostrarTodos() {
-    esconderMensagem();
-    renderizarProdutos(produtos);
+.produto-nome {
+    font-size: 1rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+    margin-bottom: 4px;
 }
-
-function renderizarProdutos(lista) {
-    var container = document.getElementById("lista-produtos");
-    container.innerHTML = "";
-    for (var i = 0; i < lista.length; i++) {
-        container.innerHTML += gerarCardProduto(lista[i]);
-    }
+.produto-preco {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
 }
-
-function mostrarMensagem(texto) {
-    var msg = document.getElementById("mensagem");
-    msg.textContent = texto;
-    msg.classList.remove("d-none");
-    document.getElementById("lista-produtos").innerHTML = "";
+.preco-orig {
+    text-decoration: line-through;
+    color: #999;
+    margin-left: 8px;
+    font-size: 0.8rem;
 }
-
-function esconderMensagem() {
-    document.getElementById("mensagem").classList.add("d-none");
+.tag-soldout {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.7);
+    color: #ccc;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 5px 10px;
+    z-index: 2;
 }
-
-document.getElementById("busca").addEventListener("input", function() {
-    buscarProduto(this.value);
-});
-
-mostrarTodos();
-</script>
+.tag-sale {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: #8b1a1a;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 5px 10px;
+    z-index: 2;
+}
+</style>
 
 <?php include 'templates/footer.php'; ?>

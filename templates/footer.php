@@ -1,6 +1,6 @@
-</div>
-<footer class="text-center mt-5 py-3 bg-primary text-white">
-    <p>© 2025 Loja Virtual</p>
+</main>
+<footer>
+    © 2025 Gungnir Store
 </footer>
 </body>
 </html>
